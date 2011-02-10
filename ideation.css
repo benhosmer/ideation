@@ -1,0 +1,104 @@
+#features-menu li a.icon-ideas span.icon {
+  background: url("idea_icon.png") top left;
+}
+
+span.feature-ideation {
+  background: url("idea_icon.png") bottom left !important;
+}
+
+.submitted-voting-grouped {
+  float: right;
+}
+
+.fivestar-widget-ideas {
+	float: right;
+}
+
+.fivestar-widget-ideas .form-item {
+  border: 0px;
+}
+
+.fivestar-widget-ideas .fivestar-tally-box {
+  float: left;
+}
+
+
+.fivestar-widget-ideas .fivestar-tally-box {
+  float:right;
+  width: 55px;
+  padding: 5px 0px;
+  text-align: center;
+}
+
+.fivestar-widget-ideas .fivestar-tally-box .fivestar-average {
+  font-size: 150%;
+}
+
+.fivestar-widget-ideas .fivestar-tally-box .vote-average,
+.fivestar-widget-ideas .fivestar-tally-box .vote-total,
+.fivestar-widget span.total-votes { display: none; }
+.fivestar-static-form-item span.total-votes,
+.fivestar-static-form-item span.user-rating { display: none; }
+.fivestar-static-form-item .form-item { border: none; }
+.fivestar-static-form-item .form-item:hover > .description { display: none; }
+
+
+.fivestar-widget-ideas .fivestar-form-item {
+  float: left;
+}
+
+.ideas-watching {
+
+}
+
+.ideas-counter-container .ideas-counter-left{
+  float: left;
+  width: 80%;
+  }
+  .ideas-counter-container .ideas-counter-left .ideas-counter-title {
+    font-size: 200%;
+    padding: 10px 10px 0px 10px;
+    }
+  .ideas-counter-container .ideas-counter-left .ideas-counter-subject{
+    font-size: 150%;
+    padding: 10px 10px 0px 10px;
+    }
+  .ideas-counter-container .ideas-counter-left .ideas-counter-description {
+    padding: 10px 10px 0px 10px;
+    }
+
+.ideas-counter-container .ideas-counter-right {
+  float: right;
+  text-align:center;
+  width: 20%;
+  }
+
+  .ideas-counter-container .ideas-counter-right .ideas-counter-button  {
+    padding: 10px;
+    }
+  .ideas-counter-container .ideas-counter-right .ideas-counter-button a {
+    display: block;
+    padding: 5px;
+    border: 1px solid #ccc;
+    text-transform: uppercase;
+    }
+
+  .ideas-counter-container .ideas-counter-right .ideas-counter-ideas-count,
+  .ideas-counter-container .ideas-counter-right .ideas-counter-votes-count {
+    border-bottom: 1px dotted #ccc;
+    line-height: 200%;
+    }
+
+  .ideas-counter-container .ideas-counter-right .ideas-counter-better {
+    line-height: 200%;
+    }
+
+.view.view-ideas-watch .related-value_five {
+  float: right;
+  padding: 10px 10px 8px 10px;
+  font-size: 18px;
+}
+
+.view.view-ideas-watch .count {
+  clear: right;
+}

@@ -1,0 +1,259 @@
+<?php
+
+include_once('ideation.features.inc');
+
+define('ideation_IDEA_TYPE_SITE', 'idea_site');
+define('ideation_IDEA_TYPE_GROUP', 'idea_group');
+
+function ideation_init() {
+  drupal_add_css(drupal_get_path('module', 'ideation') . '/ideation.css');
+  drupal_add_js(drupal_get_path('module', 'ideation') . '/ideation.js');
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function ideation_perm() {
+  return array('administer special idea fields');
+}
+
+/**
+ * Implementation of hook_menu_alter().
+ */
+function ideation_menu_alter(&$items) {
+  $items['node/add/idea-group']['access callback'] = 'ideation_idea_group_access_callback';
+  $items['node/add/idea-site']['access callback'] = 'ideation_idea_site_access_callback';
+  // Get around issue in Drupal core that content types cannot have identical
+  // human-readable names.  Normally it's called "idea (group)"
+  $items['node/add/idea-group']['title'] = 'Idea';
+}
+
+/**
+ * See ideation_menu_alter()
+ * 
+ * Hack to get around issue how the "create content" dropdown menu shows access
+ * to node types in groups since there's also a node type outside groups in that
+ * feature.
+ */
+function ideation_idea_group_access_callback() {
+  $args = func_get_args();
+  if (($space = spaces_get_space()) && $space->type == 'og') {
+    // Call the normal callback if in a group space.
+    return call_user_func_array('spaces_menu_access', $args);
+  }
+  else {
+    // Otherwise, deny access.
+    return FALSE;
+  }
+}
+/**
+ * See ideation_idea_group_access_callback().  Same workaround.
+ */
+function ideation_idea_site_access_callback() {
+  $args = func_get_args();
+  if (($space = spaces_get_space()) && $space->type == 'og') {
+    return FALSE;
+  }
+  else {
+    // Call the normal callback if in a group space.
+    return call_user_func_array('spaces_menu_access', $args);
+  }
+}
+
+/**
+ * Implementation of hook_views_pre_build()
+ */
+function ideation_views_pre_build(&$view) {
+  // @TODO look at whether need to use default display key, or can just use current display.
+  // Array of views on which to filter out site-wide idea node type when not in a group space.
+  $filter = array('ideas_listing', 'ideas_watch', 'ideas_comments');
+  if (in_array($view->name, $filter)) {
+    if (!spaces_get_space()) {
+      // Not in group space, filter to just site ideas
+      $view->display[$view->current_display]->handler->options['filters']['type']['value'] = array(ideation_IDEA_TYPE_SITE);
+      $view->display['default']->handler->options['filters']['type']['value'] = array(ideation_IDEA_TYPE_SITE);
+    }
+    else {
+      // In group space, filter to just group ideas.
+      $view->display[$view->current_display]->handler->options['filters']['type']['value'] = array(ideation_IDEA_TYPE_GROUP);
+      $view->display['default']->handler->options['filters']['type']['value'] = array(ideation_IDEA_TYPE_GROUP);
+    }
+  }
+}
+
+/**
+ * Implementation of hook_field_formatter_info().
+ */
+function ideation_field_formatter_info() {
+  return array(
+    'linked' => array(
+      'label' => t('Ideas linked fields'),
+      'field types' => array('text'),
+      'multiple values' => CONTENT_HANDLE_MODULE,
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_theme()
+ */
+function ideation_theme() {
+    return array(
+    'fivestar_widget' => array(
+      'arguments' => array('form' => NULL),
+    ),
+    // Theme for the formatter.
+    'ideation_formatter_linked' => array(
+      'arguments' => array('element' => NULL),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_theme_registry_alter()
+ */
+function ideation_theme_registry_alter(&$registry) {
+  $registry['fivestar_widget']['function'] = 'theme_ideation_fivestar_widget';
+}
+
+/**
+ * Theme function for 'Ideas linked' field formatter.
+ */
+function theme_ideation_formatter_linked($element) {
+  // Very much a one-use implementation.
+  // Path of view which has exposed filters
+  $path = 'ideas';
+  $links = array();
+  switch($element['#field_name']) {
+    case 'field_idea_categories':
+      $q = 'categories';
+      break;
+    case 'field_idea_status':
+      $q = 'status';
+      break;
+    case 'field_idea_watch':
+      $q = 'watch';
+      break;
+  }
+  foreach ($element as $key => $value) {
+    if (is_numeric($key) && is_array($value)) {
+      // Hack to not display anything if a node is not an "Idea We're Watching"
+      if ($q == 'watch' && $value['#item']['safe'] == 'Off') {
+        continue;
+      }
+      $links[] = l(t(decode_entities($value['#item']['safe'])), $path, array('query' => array($q => decode_entities($value['#item']['safe']))));
+    }
+  }
+  return implode(', ', $links);
+}
+
+/**
+ * Overriding theme_fivestar_widget
+ * 
+ * @see ideation_theme_registry_alter
+ */
+function theme_ideation_fivestar_widget($form) {
+  // Only print out the summary if text is being displayed or using rollover text.
+  if (empty($form['vote']['#description']) && strpos($form['vote']['#prefix'], 'fivestar-labels-hover') === FALSE) {
+    unset($form['vote']['#description']);
+  }
+  
+  $cast = $form['vote']['#vote_count'];
+  $avg = $form['vote']['#vote_average'] ? ($form['vote']['#vote_average'] / 100) * 5 : 0;
+
+  $output  = '';
+  $class = 'fivestar-form';
+  $class .= '-'. (isset($form['vote']['#tag']) ? $form['vote']['#tag'] : 'vote');
+  $class .= '-'. (isset($form['content_id']['#value']) ? $form['content_id']['#value'] : 0);
+
+  $output .= '<div class="fivestar-widget-ideas">';
+  $output .= '<div class="'. $class .' clear-block">';
+  $output .= drupal_render($form);
+  // Votes cast and average.
+  $output .= '<div class="fivestar-tally-box">';
+  $output .= '<div class="fivestar-average"><span class="vote-average">Average vote:</span>' . number_format($avg, 1) . '<span class="vote-total">of 5</span></div>';
+  $output .= '<div class="fivestar-count">' . format_plural($cast, '1 vote', '@count votes') . '</div>';
+  $output .= '</div>';
+  $output .= '</div>';
+  $output .= '</div>';
+  return $output;
+}
+
+/**
+ * Implementation of hook_context_links_alter().
+ */
+function ideation_context_links_alter(&$links) {
+  // Otherwise, the button to add a sitewide idea and to add a group idea
+  // content type will show up in site and group space.  This removes the
+  // correct one depending where you are.
+  if (($space = spaces_get_space()) && $space->type == 'og') {
+    if (isset($links[ideation_IDEA_TYPE_SITE])) {
+      unset($links[ideation_IDEA_TYPE_SITE]);
+    }
+  }
+  else {
+    if (isset($links[ideation_IDEA_TYPE_GROUP])) {
+      unset($links[ideation_IDEA_TYPE_GROUP]);
+    }
+  }
+}
+
+/**
+ * Implementation of hook_preprocess_block().
+ */
+function ideation_preprocess_block(&$vars) {
+  // When you choose to put exposed filters for a view in a block using the views
+  // setting on the view, there's no option to include the title.  Therefore,
+  // this sets the title on that given block.
+  if (isset($vars['block']->bid) && $vars['block']->bid === 'views--exp-ideas_listing-page_1') {
+    $vars['block']->subject = t('Search Filter');
+  }
+}
+
+/**
+ * Implementation of hook_form_alter().
+ */
+function ideation_form_alter(&$form, &$form_state, $form_id) {
+  global $user;
+  
+  switch ($form_id) {
+    case 'views_exposed_form':
+      if ($form['#id'] == 'views-exposed-form-ideas-listing-page-1') {
+        // Does not make sense to show two options for the "Ideas We're Watching"
+        // checkbox, so remove the toggle-off option and just provide a single
+        // checkbox.
+        if (is_array($form['watch']['#options'])) {
+          foreach ($form['watch']['#options'] as $key => $val) {
+            if ($val == 'Off') {
+              unset($form['watch']['#options'][$key]);
+            }
+          }
+        }
+        // Ugly hack to make the exposed filter block work on both ideas/recent
+        // and on ideas/votes.  Otherwise, ideas/votes redirects to /ideas/recent
+        // when filtering.
+        if (arg(1) == 'votes') {
+          $form['#action'] = str_replace('recent', 'votes', $form['#action']);
+        }
+      }
+      break;
+    case ideation_IDEA_TYPE_SITE . '_node_form':
+    case ideation_IDEA_TYPE_GROUP . '_node_form':
+      // Only allow site admins or managers of the active group to edit the
+      // "Ideas We're Watching" and "Implementation Status" fields
+      $account = $user;
+      $access = FALSE;
+      if (($space = spaces_get_space()) && $space->type == 'og' && is_object($space->group)) {
+        $access = og_is_group_admin($space->group, $account);
+      }
+      if (user_access('administer special idea fields')) {
+        $access = TRUE;
+      }
+      // If $access is still false, deny access to special fields.
+      if (!$access) {
+        $form['field_idea_watch']['#access'] = FALSE;
+        $form['field_idea_status']['#access'] = FALSE;
+      }
+      break;
+  }
+}
