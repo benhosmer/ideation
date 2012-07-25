@@ -43,6 +43,11 @@ function ideation_idea_group_access_callback() {
   }
   else {
     // Otherwise, deny access.
+    if(module_exists('og')) { //BUG FIX Addition
+      if (og_get_group_context()) { //Bug Fix Addition
+        return TRUE; // Bug Fix Addition
+      } // Bug Fix Addition
+    }  // Bug Fix Addition 
     return FALSE;
   }
 }
